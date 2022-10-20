@@ -35,7 +35,7 @@ func (q *Query) Add(text string, args ...any) {
 			}
 
 			identifier := pq.QuoteIdentifier(args[index-1].(string))
-			shift-- //FIXME
+			shift-- // FIXME
 			args = append(args[:index-1], args[index:]...)
 
 			return " " + identifier

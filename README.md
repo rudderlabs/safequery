@@ -1,5 +1,7 @@
 # safequery
 
+[![Tests safequery](https://github.com/rudderlabs/safequery/actions/workflows/test-safequery.yaml/badge.svg?branch=main)](https://github.com/rudderlabs/safequery/actions/workflows/test-safequery.yaml)
+
 The goal of this library is to simplify the usage of secure query practices, with minimal abstraction.
 
 ## Incremental and conditional construction
@@ -9,9 +11,7 @@ Many times we have to create a query in multiple steps, some of them conditional
 This library can simplify this by normalizing indices:
 
 ```go
-    q := safequery.Query{}
-
-    q.Add("SELECT * FROM table WHERE ")
+    q := safequery.New("SELECT * FROM table WHERE ")
 
     if searchByID {
         q.Add("id = $1", 1)
@@ -22,7 +22,10 @@ This library can simplify this by normalizing indices:
     q.Add("AND updated_at > $1", time.Now())
 
 
-    db.RowQueryContext(ctx, q.Query(), q.Args()...)
+    // "SELECT * FROM table WHERE id = $1 AND updated_at > $2", 1, timestamp
+    // OR
+    // "SELECT * FROM table WHERE name = $1 AND updated_at > $2", John, timestamp
+    db.QueryContext(ctx, q.Query(), q.Args()...)
 ```
 
 _safequery is responsible to construct the query correctly, no need to keep tract of dollar prepared parameters indices._
