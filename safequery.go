@@ -14,7 +14,13 @@ type Query struct {
 
 var matchDollar = regexp.MustCompile(`\s\$\$?\d+`)
 
-func (q *Query) Add(text string, args []any) {
+func New(text string, args ...any) *Query {
+	q := Query{}
+	q.Add(text, args...)
+	return &q
+}
+
+func (q *Query) Add(text string, args ...any) {
 	shift := len(q.args)
 
 	q.query += matchDollar.ReplaceAllStringFunc(text, func(match string) string {
@@ -29,7 +35,7 @@ func (q *Query) Add(text string, args []any) {
 			}
 
 			identifier := pq.QuoteIdentifier(args[index-1].(string))
-			shift--
+			shift-- //FIXME
 			args = append(args[:index-1], args[index:]...)
 
 			return " " + identifier
