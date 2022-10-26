@@ -1,6 +1,7 @@
 package safequery
 
 import (
+	"database/sql"
 	"regexp"
 	"strconv"
 
@@ -12,43 +13,54 @@ type Query struct {
 	args  []any
 }
 
-var matchDollar = regexp.MustCompile(`\s\$\$?\d+`)
+var matchDollar = regexp.MustCompile(`\s\$\$?[A-Za-z0-9]+`)
 
 func New(text string, args ...any) *Query {
-	q := Query{}
-	q.Add(text, args...)
-	return &q
+	q := &Query{}
+	return q.Add(text, args...)
 }
 
-func (q *Query) Add(text string, args ...any) {
-	shift := len(q.args)
+func (q *Query) Add(text string, args ...any) *Query {
+	named := make(map[string]any)
+	for _, arg := range args {
+		if namedArg, ok := arg.(sql.NamedArg); ok {
+			named[namedArg.Name] = namedArg.Value
+		}
+	}
 
 	q.query += matchDollar.ReplaceAllStringFunc(text, func(match string) string {
-		match = match[1:]
+		match = match[2:]
+		var identifier bool
+		if match[0] == '$' {
+			identifier = true
+			match = match[1:]
+		}
 
-		if match[1] == '$' {
-			// double dollar mode
-
-			index, err := strconv.Atoi(match[2:])
+		var value any
+		if '0' <= match[0] && match[0] <= '9' {
+			index, err := strconv.Atoi(match)
 			if err != nil {
 				panic(err)
 			}
+			value = args[index-1]
+		} else {
+			if param, ok := named[match]; ok {
+				value = param
+			} else {
+				panic("no named param " + match)
+			}
+		}
 
-			identifier := pq.QuoteIdentifier(args[index-1].(string))
-			shift-- // FIXME
-			args = append(args[:index-1], args[index:]...)
-
+		if identifier {
+			identifier := pq.QuoteIdentifier(value.(string))
 			return " " + identifier
+		} else {
+			q.args = append(q.args, value)
+			return " $" + strconv.Itoa(len(q.args))
 		}
-
-		index, err := strconv.Atoi(match[1:])
-		if err != nil {
-			panic(err)
-		}
-
-		return " $" + strconv.Itoa(shift+index)
 	})
-	q.args = append(q.args, args...)
+
+	return q
 }
 
 func (q *Query) Query() string {

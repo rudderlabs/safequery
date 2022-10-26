@@ -48,8 +48,6 @@ safequery will use db specific code to sanitize the identifier.
 
 ## Named parameters
 
- _Not implemented yet_
-
 Not all SQL databases support [named parameters](https://pkg.go.dev/database/sql#NamedArg). It is a very continent feature, when dealing with complex queries. safequery can map named parameters to indexed ones for databases that don't support them.
 
 ```go
